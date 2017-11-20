@@ -29,7 +29,7 @@ namespace ShipCoreMainBlock
 
 				try {
 					getInstance ().fileName = name;
-					getInstance ().file = MyAPIGateway.Utilities.WriteFileInLocalStorage(name, typeof(thxEikester.ShipCoreMainBlock.Log));
+					getInstance ().file = MyAPIGateway.Utilities.WriteFileInLocalStorage(name, typeof(ShipCoreMainBlock.Log));
 					output = true;
 				} catch (Exception e) {
 					MyAPIGateway.Utilities.ShowNotification (e.Message, 5000);
@@ -58,6 +58,7 @@ namespace ShipCoreMainBlock
 
 					getInstance ().file.Flush ();
 					getInstance ().file.Close ();
+
 				}
 			} catch(Exception e) {
 			}

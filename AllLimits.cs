@@ -243,18 +243,18 @@ namespace ShipCoreMainBlock
             {
                 base.Draw();
 
-                if (thxEikester.ShipCoreMainBlock.ShipCore.mycore == null) return;
+                if (ShipCoreMainBlock.ShipCore.mycore == null) return;
                 MyStringId material = MyStringId.GetOrCompute("SquareIgnoreDepth");
                 float thickness = 0.05f;
                 Vector4 color1 = new Vector4(255, 161, 14, 100);
                 Vector4 color2 = new Vector4(255, 0, 0, 250);
                 Vector4 color3 = new Vector4(255, 0,255, 250);
                 base.UpdateAfterSimulation();
-                foreach (var a in thxEikester.ShipCoreMainBlock.ShipCore.addonsPositions)
+                foreach (var a in ShipCoreMainBlock.ShipCore.addonsPositions)
                 {
 
 
-                    MySimpleObjectDraw.DrawLine(thxEikester.ShipCoreMainBlock.ShipCore.mycore.CubeGrid.GridIntegerToWorld(a), thxEikester.ShipCoreMainBlock.ShipCore.mycore.GetPosition(), material, ref color1, thickness);
+                    MySimpleObjectDraw.DrawLine(ShipCoreMainBlock.ShipCore.mycore.CubeGrid.GridIntegerToWorld(a), ShipCoreMainBlock.ShipCore.mycore.GetPosition(), material, ref color1, thickness);
 
                 }
 

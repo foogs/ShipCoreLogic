@@ -23,6 +23,7 @@ using VRage.Game.ObjectBuilders;
 using Sandbox.Common.ObjectBuilders;
 using System;
 using System.Linq;
+using ParallelTasks;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
@@ -57,7 +58,7 @@ namespace ShipCoreMainBlock
     public class ShipCore : MyGameLogicComponent
     {
         private bool _init = false;
-
+        private bool closed = false;
         public static AllLimits MyLimitsSettings;
         public static List<Vector3I> addonsPositions;
         public static List<Vector3I> addonsPositionstest;
@@ -83,47 +84,47 @@ namespace ShipCoreMainBlock
         bool inited = false;
         private bool[] myflag = { false, false, false, false, false };
         public static IMyBatteryBlock mycore;
-        bool debug = true;
+        static bool debug = true;
         //public static MyStringHash add4 = MyStringHash.GetOrCompute("ShipCore_Add04");
          
         public override MyObjectBuilder_EntityBase GetObjectBuilder(bool copy = false)
         {
-            ShowMessageInGame("dbg", "GetObjectBuilder");
+            ShowMessageInGameAndLog("dbg", "GetObjectBuilder");
             return Container.Entity.GetObjectBuilder(copy);
 
         }
-
+        
         /// <summary>
         /// инициализация блока
         /// </summary>
         /// <param name="objectBuilder"></param>
         public override void Init(MyObjectBuilder_EntityBase objectBuilder)
         {
-
+            base.Init(objectBuilder);
             //MyAPIGateway.Session.Config.Language
             //   if (MyAPIGateway.Session == null)
             //       return;
 
             //CLIENT only please
-            //  if (MyAPIGateway.Session.OnlineMode == MyOnlineModeEnum.OFFLINE || MyAPIGateway.Multiplayer.IsServer)
-            //     return;
+            // if (MyAPIGateway.Multiplayer.IsServer)
+            //   return;
 
             if (Entity.Physics == null || IsProjectable((IMyCubeBlock)Entity)) return;
 
-            var a = ((IMyCubeBlock)Entity).GetUserRelationToOwner(MyAPIGateway.Session.Player.IdentityId);
-            bool b = a.IsFriendly();
-            ShowMessageInGame("Init ", " IsFriendly " + b);
-            if (!b)
+            MyRelationsBetweenPlayerAndBlock blockrelationttoplayer = ((IMyCubeBlock)Entity).GetUserRelationToOwner(MyAPIGateway.Session.Player.IdentityId);
+            bool b = (blockrelationttoplayer == MyRelationsBetweenPlayerAndBlock.Enemies) || (blockrelationttoplayer == MyRelationsBetweenPlayerAndBlock.Neutral);
+            ShowMessageInGameAndLog("Init ", " IsFriendly " + !b);
+            if (b)
             {
-                NeedsUpdate |= MyEntityUpdateEnum.NONE;
-                Close();
+                // NeedsUpdate |= MyEntityUpdateEnum.NONE;
+                destuctscript();
                 return;
             }
 
             //    (((IMyCubeBlock)Entity) as IMyTerminalBlock).OwnershipChanged += )
 
-            ShowMessageInGame("dbg", "init!");
-            base.Init(objectBuilder);
+            ShowMessageInGameAndLog("dbg", "init!");
+           
             NeedsUpdate |= MyEntityUpdateEnum.EACH_100TH_FRAME;  //for draw
 
             
@@ -134,30 +135,37 @@ namespace ShipCoreMainBlock
         /// </summary>
         public override void UpdateAfterSimulation100()
         {
+            
             base.UpdateAfterSimulation100();
-            var a = ((IMyCubeBlock)Entity).GetUserRelationToOwner(MyAPIGateway.Session.Player.IdentityId);
-            bool b = a.IsFriendly();
-            ShowMessageInGame("UpdateAfterSimulation100 ", " IsFriendly " + b);
-            if (!b)
+            //    if (MyAPIGateway.Multiplayer.IsServer)
+            //     return;
+            MyRelationsBetweenPlayerAndBlock blockrelationttoplayer= ((IMyCubeBlock)Entity).GetUserRelationToOwner(MyAPIGateway.Session.Player.IdentityId);
+            bool b = (blockrelationttoplayer == MyRelationsBetweenPlayerAndBlock.Enemies)||( blockrelationttoplayer == MyRelationsBetweenPlayerAndBlock.Neutral);
+           // ShowMessageInGameAndLog("UpdateAfterSimulation100 ", " EnemyOrNeutral " + !b);
+            if (b)
             {
-                NeedsUpdate = MyEntityUpdateEnum.NONE;
-                Close();
+                //  NeedsUpdate = MyEntityUpdateEnum.NONE;
+                if (!closed) {
+                    ShowMessageInGameAndLog("MyInit", "try Destoy Script");
+                    destuctscript();
+                }
                 return;
             }
             if (!_init) MyInit(); //all init
             try
             {
+                
                 // mycore.RefreshCustomInfo();
                 if (m_display == null)
                 {
-                    ShowMessageInGame("dbg", "if (m_display == null) start");
+                   // ShowMessageInGame("dbg", "if (m_display == null) start");
                     // ShowMessageInGame("dbg", "m_display = m_block as MyEntity");
                     m_display = m_block as MyEntity; //  m_display = LoadDisplay();
                     m_display.SetEmissiveParts("Em_ONOFF", GREEN, 1f);
                     OnblockEvent(m_block as IMySlimBlock);
                     OnblockEvent(m_block as IMySlimBlock);
                     TryUpdateBlock();
-                    ShowMessageInGame("dbg", "if (m_display == null) end");
+                    
                 }
                 if ((m_block.CubeGrid as MyCubeGrid != m_mycubegrid) || ((m_block.CubeGrid as MyCubeGrid).BlocksCount <= 1))
                 {
@@ -166,34 +174,32 @@ namespace ShipCoreMainBlock
                     m_display = null;
                     m_block = null;
 
-                    ShowMessageInGame("dbg", "try Block Close()");
-                    Close();
-                    m_mycubegrid = null;
+                    ShowMessageInGameAndLog("MyInit", "try Destoy Script");
+                    destuctscript();
+                     m_mycubegrid = null;
 
                 }
                 (m_block as IMyTerminalBlock).ShowOnHUD = true;
-                TryUpdateBlock();
-                NeedsUpdate |= MyEntityUpdateEnum.NONE;
-                DetectAddons();
-                addonschanged = true;
-                OnblockEvent(m_block as IMySlimBlock);
+                
               
 
             }
             catch
             {
-                ShowMessageInGame("dbg", "UpdateAfterSimulation100 catch");
+                ShowMessageInGameAndLog("dbg", "UpdateAfterSimulation100 catch");
             }
         }
 
         private void CheckAndReplaceOwner()
         {
-            ShowMessageInGame("dbg", "m_mycubegrid.BigOwners " + m_mycubegrid.BigOwners.Count + " small" + m_mycubegrid.SmallOwners.Count);
+           // ShowMessageInGameAndLog("CheckAndReplaceOwner", "m_mycubegrid.BigOwners " + m_mycubegrid.BigOwners.Count + " small" + m_mycubegrid.SmallOwners.Count);
 
 
             if (m_mycubegrid.BigOwners.Count > 1 || m_mycubegrid.SmallOwners.Count > 1)
             {
+                ShowMessageInGameAndLog("CheckAndReplaceOwner", "Owner replased " );
                 m_mycubegrid.ChangeGridOwner(m_block.OwnerId, MyOwnershipShareModeEnum.Faction);
+                m_mycubegrid.ChangeGridOwnership(m_block.OwnerId, MyOwnershipShareModeEnum.Faction);
 
             }
             
@@ -210,7 +216,8 @@ namespace ShipCoreMainBlock
 
             Log.init("debug.log");
             Log.writeLine("<CoreBlock> Logging started.");
-            ShowMessageInGame("dbg", "first init");
+            closed = false;
+            ShowMessageInGameAndLog("MyInit", " MyInit start");
             SetUpDefaultLimits();
             m_block = (IMyCubeBlock)Entity;
             m_block.NeedsWorldMatrix = true;
@@ -227,45 +234,88 @@ namespace ShipCoreMainBlock
            
             //   m_block.IsWorkingChanged
             LOOP_soundEmitter = new MyEntity3DSoundEmitter(Container.Entity as VRage.Game.Entity.MyEntity);
-            ShowMessageInGame("dbg", "init end!");
-            Vector3I corepos = m_block.Position;
-            ShowMessageInGame("dbgcorepos", corepos.ToString());
+
+           // ShowMessageInGameAndLog("dbgcorepos", m_block.Position.ToString());
+
 
             Matrix mmatrix;
             m_block.Orientation.GetMatrix(out mmatrix);
             addonsPositions = new List<Vector3I>()//слева справа сверху снизу ссади
             {
-                   new Vector3I(corepos+mmatrix.Left),//слева
-                 new Vector3I(corepos+mmatrix.Right), //справа
-                 new Vector3I(corepos+mmatrix.Up), //сверху
-                new Vector3I(corepos+mmatrix.Down), //снизу
-                new Vector3I(corepos+mmatrix.Backward), //ссади
+                   new Vector3I(m_block.Position+mmatrix.Left),//слева
+                 new Vector3I(m_block.Position+mmatrix.Right), //справа
+                 new Vector3I(m_block.Position+mmatrix.Up), //сверху
+                new Vector3I(m_block.Position+mmatrix.Down), //снизу
+                new Vector3I(m_block.Position+mmatrix.Backward), //ссади
             };
-
-
-
-
-
-            string tmp = "";
-            foreach (var str in addonsPositions)
-            {
-                tmp += str.ToString();
-
-            }
-            ShowMessageInGame("dbg", tmp);
-
-
 
             DetectAddons();
 
             (m_block as IMyTerminalBlock).ShowOnHUD = true;
-            _init = true;
+            
 
             MyAPIGateway.TerminalControls.CustomControlGetter += TerminalControls_CustomControlGetter;
             mycore = Container.Entity as IMyBatteryBlock;
             mycore.AppendingCustomInfo += Tool_AppendingCustomInfo;
+
             CheckAndReplaceOwner();
+            TryUpdateBlock();
+            addonschanged = true;
+            DetectAddons();
             CreateWeirdLabels();
+
+
+
+            try
+            {
+
+                // mycore.RefreshCustomInfo();
+                if (m_display == null)
+                {
+                    // ShowMessageInGame("dbg", "if (m_display == null) start");
+                    // ShowMessageInGame("dbg", "m_display = m_block as MyEntity");
+                    m_display = m_block as MyEntity; //  m_display = LoadDisplay();
+                    m_display.SetEmissiveParts("Em_ONOFF", GREEN, 1f);
+                    OnblockEvent(m_block as IMySlimBlock);
+                    OnblockEvent(m_block as IMySlimBlock);
+                    TryUpdateBlock();
+
+                }
+                if ((m_block.CubeGrid as MyCubeGrid != m_mycubegrid) || ((m_block.CubeGrid as MyCubeGrid).BlocksCount <= 1))
+                {
+                    m_display.SetEmissiveParts("Em_ONOFF", RED, 1f);
+                    NeedsUpdate |= MyEntityUpdateEnum.NONE;
+                    m_display = null;
+                    m_block = null;
+
+                    ShowMessageInGameAndLog("MyInit", "try Destoy Script");
+                    destuctscript();
+                    m_mycubegrid = null;
+
+                }
+              (m_block as IMyTerminalBlock).ShowOnHUD = true;
+
+
+
+            }
+            catch
+            {
+                ShowMessageInGameAndLog("dbg", "not in UpdateAfterSimulation100 catch");
+            }
+
+
+
+
+            OnblockEvent(m_block as IMySlimBlock);
+            _init = true;
+
+           /*if (_processing2) //worker thread 2 is busy
+                return;
+
+            _processing2 = true;
+
+            MyAPIGateway.Parallel.Start(TryUpdateBlockLimits);*/
+            ShowMessageInGameAndLog("dbg", "init end!");
 
         }
 
@@ -281,7 +331,7 @@ namespace ShipCoreMainBlock
             MyLabelCoreList.Add(MyLabelCore);
 
             }
-            ShowMessageInGame("CreateWeirdLabels ", MyLabelCoreList.Count.ToString());
+            ShowMessageInGameAndLog("CreateWeirdLabels ", MyLabelCoreList.Count.ToString());
         }
 
         private static bool IsMyBlock(IMyTerminalBlock Block)
@@ -294,6 +344,7 @@ namespace ShipCoreMainBlock
         }
         private void Tool_AppendingCustomInfo(IMyTerminalBlock trash, StringBuilder Info)
         {
+            ShowMessageInGameAndLog("Tool_AppendingCustomInfo", "Tool_AppendingCustomInfo " + MyLimitsSettings.installedAddons.Count);
             Info.Clear();
             Info.AppendLine($">CORE STATUS:<");
 
@@ -334,12 +385,12 @@ namespace ShipCoreMainBlock
                     {
                         tmp[i] = ")>" + addon.ToString() ;
                         tmp[i].PadRight(35- tmp[i].Length, ' ');
-                        ShowMessageInGame("CCGetter ", "in foreach" + addon.ToString());
+                        ShowMessageInGameAndLog("CCGetter ", "in foreach" + addon.ToString());
                         i++;
                     }
 
 
-                    ShowMessageInGame("CCGetter ", "tmp : " + tmp + "  GetOrCompute: " + tmp.Length);
+                    ShowMessageInGameAndLog("CCGetter ", "tmp : " + tmp + "  GetOrCompute: " + tmp.Length);
                     WriteToLWeirdLabels(tmp,i);
 
                 }
@@ -354,18 +405,18 @@ namespace ShipCoreMainBlock
             {
 
                 MyLabelCoreList[i].Label = (MyStringId)MyStringId.GetOrCompute(tmp[i]);
-                ShowMessageInGame("CCGetter ", "ok end");
+                ShowMessageInGameAndLog("CCGetter ", "ok end");
                 MyLabelCoreList[i].RedrawControl();
                 MyLabelCoreList[i].UpdateVisual();
-                ShowMessageInGame("WriteToLWeirdLabels  ",MyLabelCoreList[i].Id + MyLabelCoreList[i].Label.String);
+                ShowMessageInGameAndLog("WriteToLWeirdLabels  ",MyLabelCoreList[i].Id + MyLabelCoreList[i].Label.String);
             }            
             for ( i=i; i <=6; i++)
             {
                 MyLabelCoreList[i].Label = MyStringId.GetOrCompute(""); ;
-                ShowMessageInGame("CCGetter2 ", "ok end");
+                ShowMessageInGameAndLog("CCGetter2 ", "ok end");
                 MyLabelCoreList[i].RedrawControl();
                 MyLabelCoreList[i].UpdateVisual();
-                ShowMessageInGame("WriteToLWeirdLabels  ", MyLabelCoreList[i].Id + MyLabelCoreList[i].Label.String);
+                ShowMessageInGameAndLog("WriteToLWeirdLabels  ", MyLabelCoreList[i].Id + MyLabelCoreList[i].Label.String);
             }
 
 
@@ -373,30 +424,47 @@ namespace ShipCoreMainBlock
                
         }
 
+        private void Callback(int workData)
+        {
+            
+            
+                return;
+
+            //process results
+        }
         private void TryUpdateBlockLimits()
         {
-            ShowMessageInGame("dbg", "TryUpdateBlockLimits start");
-            try
-            {
-                if (m_mycubegrid == null) return;
-                var entity = m_mycubegrid;
-                if (!(entity is IMyCubeGrid))
-                    return;
+            
 
-                if (entity.Physics == null || entity.MarkedForClose || entity.Closed)
-                    return;
+            // ShowMessageInGameAndLog("dbg", "TryUpdateBlockLimits start");
 
-                if (!entity.InScene)
-                    return;
-                bool temphasoverhead = false;
-                //  ShowMessageInGame("dbg", "TryUpdateBlockLimits point1");
-                if (addonschanged) { UpdateAddons(); }
-                CheckAndReplaceOwner();
+
+            /*if (m_mycubegrid == null) return;
+            var entity = m_mycubegrid;
+            if (!(entity is IMyCubeGrid))
+                return;
+
+            if (entity.Physics == null || entity.MarkedForClose || entity.Closed)
+                return;
+
+            if (!entity.InScene)
+                return;
+            */
+            bool temphasoverhead = false;
+            //  ShowMessageInGame("dbg", "TryUpdateBlockLimits point1");
+
+            List<IMySlimBlock> blockstoProcess = new List<IMySlimBlock>();
+         
+
+            if (addonschanged) UpdateAddons(); 
+               
                 //Dictionary<AllLimits.Addons, int> copy_installedAddons = new Dictionary<AllLimits.Addons, int>(MyLimitsSettings.installedAddons);
                 Dictionary<AllLimits.BlockLimitItem, int> blocks = new Dictionary<AllLimits.BlockLimitItem, int>();
-                IMyCubeGrid grid = (IMyCubeGrid)entity;
-                List<IMySlimBlock> blockstoProcess = new List<IMySlimBlock>();
-                grid.GetBlocks(blockstoProcess, x => x.FatBlock is IMyTerminalBlock);
+              
+
+            try
+            {
+                (m_mycubegrid as IMyCubeGrid).GetBlocks(blockstoProcess, x => x.FatBlock is IMyTerminalBlock);
                 foreach (IMySlimBlock myTerminalBlock in blockstoProcess)
                 {
                     if (myTerminalBlock?.FatBlock == null)
@@ -411,12 +479,12 @@ namespace ShipCoreMainBlock
                         if (item.Mode == AllLimits.BlockLimitItem.EnforcementMode.BlockTypeId && string.IsNullOrEmpty(item.BlockTypeId))
                         {
 
-                            ShowMessageInGame("dbg", "Block Enforcement item for \"{0}\" is set to mode BlockTypeId but does not have BlockTypeId set.");
+                           // ShowMessageInGameAndLog("dbg", "Block Enforcement item for \"{0}\" is set to mode BlockTypeId but does not have BlockTypeId set.");
                             continue;
                         }
                         if (item.Mode == AllLimits.BlockLimitItem.EnforcementMode.BlockSubtypeId && string.IsNullOrEmpty(item.BlockSubtypeId))
                         {
-                            ShowMessageInGame("dbg", "Block Enforcement item for \"{0}\" is set to mode BlockSubtypeId but does not have BlockSubtypeId set.");
+                            //ShowMessageInGameAndLog("dbg", "Block Enforcement item for \"{0}\" is set to mode BlockSubtypeId but does not have BlockSubtypeId set.");
                             continue;
                         }
 
@@ -455,9 +523,9 @@ namespace ShipCoreMainBlock
 
                             if (MyAPIGateway.Session.Config.Language == MyLanguagesEnum.Russian)
                             {
-                                ShowMessageInGame("ShipCore:", string.Format("Вы превысили максимальное количество блоков {0} в корабле '{1}'.  При следующей чистке удаляться {2} блока!", item.BlockSubtypeId, grid.DisplayName, blocks[item] - item.MaxPerGrid));
+                                //ShowMessageInGameAndLog("ShipCore:", string.Format("Вы превысили максимальное количество блоков {0} в корабле '{1}'.  При следующей чистке удаляться {2} блока!", item.BlockSubtypeId, grid.DisplayName, blocks[item] - item.MaxPerGrid));
                             }
-                            ShowMessageInGame("ShipCore:", string.Format("You have exceeded the max block count of {0} on the ship '{1}'. Next cleanup will delete {2} block(s) to enforce this block limit.", item.BlockSubtypeId, grid.DisplayName, blocks[item] - item.MaxPerGrid));
+                          //  ShowMessageInGameAndLog("ShipCore:", string.Format("You have exceeded the max block count of {0} on the ship '{1}'. Next cleanup will delete {2} block(s) to enforce this block limit.", item.BlockSubtypeId, grid.DisplayName, blocks[item] - item.MaxPerGrid));
                             temphasoverhead = true;
                             //  }
                         }
@@ -479,7 +547,7 @@ namespace ShipCoreMainBlock
                     _processing2 = false;
                     //ShowMessageInGame("dbg", "hasoverhead null found!");
                 }
-                ShowMessageInGame("dbg", "TryUpdateBlockLimits end");
+                ShowMessageInGameAndLog("dbg", "TryUpdateBlockLimits end");
             }
             catch
             {
@@ -489,6 +557,7 @@ namespace ShipCoreMainBlock
             finally
             {
                 _processing2 = false;
+             
 
             }
 
@@ -506,37 +575,54 @@ namespace ShipCoreMainBlock
             if (addonsPositions.Contains(block.Position))
             {
                 DetectAddons();
-                ShowMessageInGame("dbg", "DetectAddons!");
+                
             }
 
             TryUpdateBlock();
+
             CheckAndReplaceOwner();
+
+
             if (_processing2) //worker thread 2 is busy
                 return;
 
             _processing2 = true;
 
-            MyAPIGateway.Parallel.Start(TryUpdateBlockLimits);
+            
+            MyAPIGateway.Parallel.StartBackground(delegate () { TryUpdateBlockLimits(); }, delegate { _processing2 = false; });//new way to parralel
 
+           
 
         }
-
-        public override void Close()
+        private void destuctscript()
         {
             Log.close();
 
-            ShowMessageInGame("dbg", "Block Close()");
+            ShowMessageInGameAndLog("dbg", "Block Close()");
             if (m_mycubegrid != null)
             {
                 m_mycubegrid.OnBlockAdded -= OnblockEvent;
                 m_mycubegrid.OnBlockRemoved -= OnblockEvent;
                 MyAPIGateway.TerminalControls.CustomControlGetter -= TerminalControls_CustomControlGetter;
                 mycore.AppendingCustomInfo -= Tool_AppendingCustomInfo;
+                
+                m_block = null;
+                m_mycubegrid = null;
+                m_display = null;
+                closed = true;
                 for (var i = 0; i <= 6; i++)
                 {
                     MyAPIGateway.TerminalControls.RemoveControl<IMyBatteryBlock>(MyLabelCoreList[i]);
                 }
             }
+
+
+        }
+        public override void Close()
+        {
+            destuctscript();
+            base.Close();
+            
 
 
         }
@@ -547,7 +633,7 @@ namespace ShipCoreMainBlock
         private void UpdateAddons()
         {
             
-            ShowMessageInGame("dbg", "UpdateAddons start");
+            ShowMessageInGameAndLog("dbg", "UpdateAddons start");
             addonschanged = false;
             SetUpDefaultLimits();// слева справа сверху снизу ссади
 
@@ -557,14 +643,14 @@ namespace ShipCoreMainBlock
             {
                 var a = m_mycubegrid.GetCubeBlock(addonsPositions[3]) as IMySlimBlock;
 
-                ShowMessageInGame("dbg", "UpdateAddons ShipCore_Add04" 
-                    + (m_mycubegrid.CubeExists(addonsPositions[3]).ToString() 
-                    + a.BlockDefinition.Id.SubtypeId.String) + (m_mycubegrid.GetCubeBlock(addonsPositions[3]) as IMySlimBlock).IsFullIntegrity);
+               // ShowMessageInGame("dbg", "UpdateAddons ShipCore_Add04" 
+          //         + (m_mycubegrid.CubeExists(addonsPositions[3]).ToString() 
+                  //  + a.BlockDefinition.Id.SubtypeId.String) + (m_mycubegrid.GetCubeBlock(addonsPositions[3]) as IMySlimBlock).IsFullIntegrity);
 
                 if (MyLimitsSettings.installedAddons.ContainsKey(AllLimits.Addons.Сooler))
                 {
                     MyLimitsSettings.installedAddons[AllLimits.Addons.Сooler]++;
-                    ShowMessageInGame("dbg", "UpdateAddons installedAddons +1 Сooler" + MyLimitsSettings.installedAddons.Count);
+                  //  ShowMessageInGame("dbg", "UpdateAddons installedAddons +1 Сooler" + MyLimitsSettings.installedAddons.Count);
                 }
 
                 else
@@ -599,7 +685,7 @@ namespace ShipCoreMainBlock
             }
 
 
-            ShowMessageInGame("dbg", "UpdateAddons end");
+            ShowMessageInGameAndLog("dbg", "UpdateAddons end");
 
 
         }
@@ -610,17 +696,17 @@ namespace ShipCoreMainBlock
         private void LoadAddon(IMySlimBlock block)
         {
            
-            ShowMessageInGame("dbg", "LoadAddon start");
+            ShowMessageInGameAndLog("dbg", "LoadAddon start");
 
             MyStringHash subtype = block.BlockDefinition.Id.SubtypeId;
-            ShowMessageInGame("dbg", "LoadAddon MyStringHash: "+ subtype.String);
+           // ShowMessageInGame("dbg", "LoadAddon MyStringHash: "+ subtype.String);
 
             AllLimits.Addons TmpAddon = AllLimits.Addons.Сooler;
             if (AllLimits.namelistaddons.ContainsKey(subtype) && (subtype != AllLimits.namelistaddonsreverse[AllLimits.Addons.Сooler]))
                 TmpAddon = AllLimits.namelistaddons[subtype];  // AllLimits.Addons.friend_or_foe_transponder;
             else
             {
-                ShowMessageInGame("dbg", " wrong block addon" + (subtype == AllLimits.namelistaddonsreverse[AllLimits.Addons.Сooler]));
+              //  ShowMessageInGame("dbg", " wrong block addon" + (subtype == AllLimits.namelistaddonsreverse[AllLimits.Addons.Сooler]));
                 return;
             }
 
@@ -632,16 +718,17 @@ namespace ShipCoreMainBlock
             else
             {
                 MyLimitsSettings.installedAddons.Add(TmpAddon, 1);
-                ShowMessageInGame("dbg", "add in LoadAddon");
-                ShowMessageInGame("dbg", "add in LoadAddon. installedAddons: " + MyLimitsSettings.installedAddons.Count);
+             //   ShowMessageInGame("dbg", "add in LoadAddon");
+                //ShowMessageInGame("dbg", "add in LoadAddon. installedAddons: " + MyLimitsSettings.installedAddons.Count);
             }
-            ShowMessageInGame("dbg", "LoadAddon end");
+            ShowMessageInGameAndLog("dbg", "LoadAddon end");
         }
         /// <summary>
         /// проверям только нужные нам грани //оптимизировать над потом
         /// </summary>
         private void DetectAddons()
         {
+           // ShowMessageInGameAndLog("DetectAddons", "DetectAddons start!");
 
             bool[] myflag1 = new bool[] { false, false, false, false, false };
 
@@ -669,7 +756,7 @@ namespace ShipCoreMainBlock
             if ((myflag[0] != myflag1[0]) | (myflag[1] != myflag1[1]) | (myflag[2] != myflag1[2]) | (myflag[3] != myflag1[3]) | (myflag[4] != myflag1[4]))
             {
                 addonschanged = true;
-                ShowMessageInGame("dbg", " addonschanged" + addonschanged);
+                ShowMessageInGameAndLog("dbg", " addonschanged" + addonschanged);
                 myflag = myflag1;
             }
             else
@@ -842,7 +929,7 @@ namespace ShipCoreMainBlock
             return Grid.Projector != null && (Grid.Projector as IMyProjector).CanBuild((IMySlimBlock)Block, true) == BuildCheckResult.OK;
         }
 
-        private void ShowMessageInGame(string ot, string msg)
+        private static void ShowMessageInGameAndLog(string ot, string msg)
         {
             if (debug)
             {
@@ -859,6 +946,7 @@ namespace ShipCoreMainBlock
             MyLimitsSettings = new AllLimits();
 
         }
+        
         public float GetCurrentBlockLimitInPercent()
         {
             currentBlocks = (float)m_mycubegrid.BlocksCount;
