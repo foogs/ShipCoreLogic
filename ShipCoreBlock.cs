@@ -307,6 +307,7 @@ namespace ShipCoreMainBlock
 
 
             OnblockEvent(m_block as IMySlimBlock);
+            UpdateAddons();
             _init = true;
 
            /*if (_processing2) //worker thread 2 is busy
@@ -507,32 +508,30 @@ namespace ShipCoreMainBlock
                             else
                                 blocks.Add(item, 1);
                         }
-                    }
-                    foreach (AllLimits.BlockLimitItem item in MyLimitsSettings.Big_List_of_Limits)
+                    }                  
+                    
+                }
+                foreach (AllLimits.BlockLimitItem item in MyLimitsSettings.Big_List_of_Limits)
+                {
+                    if (item.Mode == AllLimits.BlockLimitItem.EnforcementMode.Off)
+                        continue;
+
+                    if (!blocks.ContainsKey(item))
+                        continue;
+
+                    if (blocks[item] > item.MaxPerGrid)
                     {
-                        if (item.Mode == AllLimits.BlockLimitItem.EnforcementMode.Off)
-                            continue;
+                        // if (!MyAPIGateway.Session.HasCreativeRights)
+                        // {
 
-                        if (!blocks.ContainsKey(item))
-                            continue;
-
-                        if (blocks[item] > item.MaxPerGrid)
+                        if (MyAPIGateway.Session.Config.Language == MyLanguagesEnum.Russian)
                         {
-                            // if (!MyAPIGateway.Session.HasCreativeRights)
-                            // {
-
-                            if (MyAPIGateway.Session.Config.Language == MyLanguagesEnum.Russian)
-                            {
-                                //ShowMessageInGameAndLog("ShipCore:", string.Format("Вы превысили максимальное количество блоков {0} в корабле '{1}'.  При следующей чистке удаляться {2} блока!", item.BlockSubtypeId, grid.DisplayName, blocks[item] - item.MaxPerGrid));
-                            }
-                          //  ShowMessageInGameAndLog("ShipCore:", string.Format("You have exceeded the max block count of {0} on the ship '{1}'. Next cleanup will delete {2} block(s) to enforce this block limit.", item.BlockSubtypeId, grid.DisplayName, blocks[item] - item.MaxPerGrid));
-                            temphasoverhead = true;
-                            //  }
+                            //ShowMessageInGameAndLog("ShipCore:", string.Format("Вы превысили максимальное количество блоков {0} в корабле '{1}'.  При следующей чистке удаляться {2} блока!", item.BlockSubtypeId, grid.DisplayName, blocks[item] - item.MaxPerGrid));
                         }
+                        //  ShowMessageInGameAndLog("ShipCore:", string.Format("You have exceeded the max block count of {0} on the ship '{1}'. Next cleanup will delete {2} block(s) to enforce this block limit.", item.BlockSubtypeId, grid.DisplayName, blocks[item] - item.MaxPerGrid));
+                        temphasoverhead = true;
+                        //  }
                     }
-
-
-
                 }
                 // ShowMessageInGame("dbg", "hasoverhead" + hasoverhead + "temphasoverhead" + temphasoverhead);
                 hasoverhead = temphasoverhead;
@@ -684,7 +683,7 @@ namespace ShipCoreMainBlock
                 LoadAddon(m_mycubegrid.GetCubeBlock(addonsPositions[4]));
             }
 
-
+            AllLimits.RecalcLimitsWithAddons();
             ShowMessageInGameAndLog("dbg", "UpdateAddons end");
 
 
