@@ -39,8 +39,8 @@ using ProtoBuf;
 using SpaceEngineers.Game.ModAPI;
 
 /*
- ───█───▄▀█▀▀█▀▄▄───▐█──────▄▀█▀▀█▀▄▄
-──█───▀─▐▌──▐▌─▀▀──▐█─────▀─▐▌──▐▌─█▀
+───█───▄▀█▀▀█▀▄▄───▐█──────▄▀█▀▀█▀▄
+──█───▀─▐▌──▐▌─▀▀──▐█─────▀─▐▌──▐▌─█
 ─▐▌──────▀▄▄▀──────▐█▄▄──────▀▄▄▀──▐▌
 ─█────────────────────▀█────────────█
 ▐█─────────────────────█▌───────────█
@@ -49,94 +49,81 @@ using SpaceEngineers.Game.ModAPI;
 ─▐▌───────────────▀███▀────────────▐▌
 ──█──────────▀▄───────────▄▀───────█
 ───█───────────▀▄▄▄▄▄▄▄▄▄▀────────█ 
-devBranch
+────█──────~fuckrexxar~─────────█
  */
 
 namespace ShipCoreMainBlock
 {
-    [MyEntityComponentDescriptor(typeof(MyObjectBuilder_BatteryBlock), true, "ShipCoreMainBlock")]
+    [MyEntityComponentDescriptor(typeof(MyObjectBuilder_BatteryBlock), false, "ShipCoreMainBlock")]
     public class ShipCore : MyGameLogicComponent
     {
         private bool _init = false;
         private bool closed = false;
-        public static AllLimits MyLimitsSettings;
-        public static List<Vector3I> addonsPositions;
-        public static List<Vector3I> addonsPositionstest;
+        private AllLimits MyLimitsSettings;
+        private List<Vector3I> addonsPositions;
+        private List<Vector3I> addonsPositionstest;
         private Color COLOROFF = new Color(240, 240, 240);
         private Color GREEN = new Color(0, 240, 0);
         private Color YELLOW = new Color(240, 150, 0);
         private Color RED = new Color(240, 0, 0);
         private Color PURPLE = new Color(20, 150, 240);
         private MyEntity3DSoundEmitter LOOP_soundEmitter;
-
-        public MyEntity3DSoundEmitter LoopSoundEmitter { get { return LOOP_soundEmitter; } }
-        float currentBlocks = 0.0f;
-        bool _processing = false;
-        bool _processing2 = false;
-        bool hasoverhead = false;
-        bool hasoverheadblocks = false;
-        bool addonschanged = true;
-        MyEntity m_display;
-        MyCubeGrid m_mycubegrid;
-        IMyCubeBlock m_block;
-        private static List<IMyTerminalControlLabel> MyLabelCoreList = new List<IMyTerminalControlLabel>();
-        bool? isWorking = null;
-        bool inited = false;
+        private MyObjectBuilder_EntityBase m_objectBuilder = null;
+        private MyEntity3DSoundEmitter LoopSoundEmitter { get { return LOOP_soundEmitter; } }
+        private float currentBlocks = 0.0f;
+        private  bool _processing = false;
+        private bool _processing2 = false;
+        private  bool hasoverhead = false;
+        private bool hasoverheadblocks = false;
+        private bool addonschanged = true;
+        private MyEntity m_display;
+        private MyCubeGrid m_mycubegrid;
+        private IMyCubeBlock m_block;
+        private List<IMyTerminalControlLabel> MyLabelCoreList;
+        private bool? isWorking = null;
+        private bool inited = false;
         private bool[] myflag = { false, false, false, false, false };
-        public static IMyBatteryBlock mycore;
+        private IMyBatteryBlock mycore;
         static bool debug = true;
         //public static MyStringHash add4 = MyStringHash.GetOrCompute("ShipCore_Add04");
          
-        public override MyObjectBuilder_EntityBase GetObjectBuilder(bool copy = false)
-        {
-            ShowMessageInGameAndLog("dbg", "GetObjectBuilder");
-            return Container.Entity.GetObjectBuilder(copy);
-
-        }
-        
+  
+        public override MyObjectBuilder_EntityBase GetObjectBuilder(bool copy = false) => m_objectBuilder;
         /// <summary>
         /// инициализация блока
         /// </summary>
         /// <param name="objectBuilder"></param>
         public override void Init(MyObjectBuilder_EntityBase objectBuilder)
         {
-            base.Init(objectBuilder);
+            //base.Init(objectBuilder);
             //MyAPIGateway.Session.Config.Language
             //   if (MyAPIGateway.Session == null)
             //       return;
-
+            m_objectBuilder = objectBuilder;
             //CLIENT only please
             // if (MyAPIGateway.Multiplayer.IsServer)
             //   return;
 
-            if (Entity.Physics == null || IsProjectable((IMyCubeBlock)Entity)) return;
+            ShowMessageInGameAndLog("dbg", "init0");
+            NeedsUpdate = MyEntityUpdateEnum.EACH_100TH_FRAME;
+            ShowMessageInGameAndLog("dbg", "init1");
 
-            MyRelationsBetweenPlayerAndBlock blockrelationttoplayer = ((IMyCubeBlock)Entity).GetUserRelationToOwner(MyAPIGateway.Session.Player.IdentityId);
-            bool b = (blockrelationttoplayer == MyRelationsBetweenPlayerAndBlock.Enemies) || (blockrelationttoplayer == MyRelationsBetweenPlayerAndBlock.Neutral);
-            ShowMessageInGameAndLog("Init ", " IsFriendly " + !b);
-            if (b)
-            {
-                // NeedsUpdate |= MyEntityUpdateEnum.NONE;
-                destuctscript();
-                return;
-            }
-
-            //    (((IMyCubeBlock)Entity) as IMyTerminalBlock).OwnershipChanged += )
-
-            ShowMessageInGameAndLog("dbg", "init!");
-           
-            NeedsUpdate |= MyEntityUpdateEnum.EACH_100TH_FRAME;  //for draw
-
-            
 
         }
+       
         /// <summary>        /// 
         /// делаем грязь каждые 100 тиков
         /// </summary>
         public override void UpdateAfterSimulation100()
         {
+            ShowMessageInGameAndLog("dbg", "UpdateAfterSimulation100");
+
+            if ((MyAPIGateway.Session == null) || (MyAPIGateway.Utilities == null))
+                return;
+
+            if ( ((IMyCubeBlock)Entity).CubeGrid.Physics == null || IsProjectable((IMyCubeBlock)Entity)) return;
             
-            base.UpdateAfterSimulation100();
+            
             //    if (MyAPIGateway.Multiplayer.IsServer)
             //     return;
             MyRelationsBetweenPlayerAndBlock blockrelationttoplayer= ((IMyCubeBlock)Entity).GetUserRelationToOwner(MyAPIGateway.Session.Player.IdentityId);
@@ -170,7 +157,7 @@ namespace ShipCoreMainBlock
                 if ((m_block.CubeGrid as MyCubeGrid != m_mycubegrid) || ((m_block.CubeGrid as MyCubeGrid).BlocksCount <= 1))
                 {
                     m_display.SetEmissiveParts("Em_ONOFF", RED, 1f);
-                    NeedsUpdate |= MyEntityUpdateEnum.NONE;
+                   // NeedsUpdate |= MyEntityUpdateEnum.NONE;
                     m_display = null;
                     m_block = null;
 
@@ -188,12 +175,13 @@ namespace ShipCoreMainBlock
             {
                 ShowMessageInGameAndLog("dbg", "UpdateAfterSimulation100 catch");
             }
+            Draw();
         }
 
         private void CheckAndReplaceOwner()
         {
            // ShowMessageInGameAndLog("CheckAndReplaceOwner", "m_mycubegrid.BigOwners " + m_mycubegrid.BigOwners.Count + " small" + m_mycubegrid.SmallOwners.Count);
-
+           //проверка на существующий блок ядра
 
             if (m_mycubegrid.BigOwners.Count > 1 || m_mycubegrid.SmallOwners.Count > 1)
             {
@@ -322,13 +310,15 @@ namespace ShipCoreMainBlock
 
         private void CreateWeirdLabels()
         {
-           
+            MyLabelCoreList  = new List<IMyTerminalControlLabel>();
+            MyLabelCoreList.Clear();
 
             for (var i = 0; i <= 6; i++) { 
             var MyLabelCore = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlLabel, IMyBatteryBlock>("kek"+i);
             MyLabelCore.Label = MyStringId.GetOrCompute(">No info.");
             MyLabelCore.Visible = IsMyBlock;
             MyAPIGateway.TerminalControls.AddControl<IMyBatteryBlock>(MyLabelCore);
+           
             MyLabelCoreList.Add(MyLabelCore);
 
             }
@@ -361,8 +351,9 @@ namespace ShipCoreMainBlock
         }
         private void TerminalControls_CustomControlGetter(IMyTerminalBlock block, List<IMyTerminalControl> controls)
         {
-            if (block.BlockDefinition.SubtypeId == "ShipCoreMainBlock")
+            if (block.EntityId == m_block.EntityId)
             {
+               
 
                 foreach (var control in controls.ToList())
                 {
@@ -631,8 +622,8 @@ namespace ShipCoreMainBlock
         /// </summary>
         private void UpdateAddons()
         {
-            
-            ShowMessageInGameAndLog("dbg", "UpdateAddons start");
+
+            ShowMessageInGameAndLog("UpdateAddons", " start");
             addonschanged = false;
             SetUpDefaultLimits();// слева справа сверху снизу ссади
 
@@ -683,8 +674,8 @@ namespace ShipCoreMainBlock
                 LoadAddon(m_mycubegrid.GetCubeBlock(addonsPositions[4]));
             }
 
-            AllLimits.RecalcLimitsWithAddons();
-            ShowMessageInGameAndLog("dbg", "UpdateAddons end");
+            MyLimitsSettings.RecalcLimitsWithAddons();
+            ShowMessageInGameAndLog("UpdateAddons", " end");
 
 
         }
@@ -694,8 +685,8 @@ namespace ShipCoreMainBlock
         /// <param name="block"></param>
         private void LoadAddon(IMySlimBlock block)
         {
-           
-            ShowMessageInGameAndLog("dbg", "LoadAddon start");
+
+            ShowMessageInGameAndLog("LoadAddon", " start");
 
             MyStringHash subtype = block.BlockDefinition.Id.SubtypeId;
            // ShowMessageInGame("dbg", "LoadAddon MyStringHash: "+ subtype.String);
@@ -720,7 +711,7 @@ namespace ShipCoreMainBlock
              //   ShowMessageInGame("dbg", "add in LoadAddon");
                 //ShowMessageInGame("dbg", "add in LoadAddon. installedAddons: " + MyLimitsSettings.installedAddons.Count);
             }
-            ShowMessageInGameAndLog("dbg", "LoadAddon end");
+            ShowMessageInGameAndLog("LoadAddon", " end");
         }
         /// <summary>
         /// проверям только нужные нам грани //оптимизировать над потом
@@ -755,7 +746,7 @@ namespace ShipCoreMainBlock
             if ((myflag[0] != myflag1[0]) | (myflag[1] != myflag1[1]) | (myflag[2] != myflag1[2]) | (myflag[3] != myflag1[3]) | (myflag[4] != myflag1[4]))
             {
                 addonschanged = true;
-                ShowMessageInGameAndLog("dbg", " addonschanged" + addonschanged);
+                ShowMessageInGameAndLog("DetectAddons", " addonschanged" + addonschanged);
                 myflag = myflag1;
             }
             else
@@ -766,7 +757,7 @@ namespace ShipCoreMainBlock
         }
         public void TryUpdateBlock()
         {
-            //ShowMessageInGame("dbg", "TryUpdateBlock start!");
+            ShowMessageInGameAndLog("TryUpdateBlock", " start");
             try
             {
                 bool isPowered = IsWorking();
@@ -904,7 +895,26 @@ namespace ShipCoreMainBlock
                 }
             }
         }
+        public  void Draw()
+        {
+            
 
+            if (mycore == null) return;
+            MyStringId material = MyStringId.GetOrCompute("SquareIgnoreDepth");
+            float thickness = 0.05f;
+            Vector4 color1 = new Vector4(255, 161, 14, 100);
+            Vector4 color2 = new Vector4(255, 0, 0, 250);
+            Vector4 color3 = new Vector4(255, 0, 255, 250);
+            base.UpdateAfterSimulation();
+            foreach (var a in addonsPositions)
+            {
+
+
+                MySimpleObjectDraw.DrawLine(mycore.CubeGrid.GridIntegerToWorld(a), mycore.GetPosition(), material, ref color1, thickness);
+
+            }
+
+        }
         public bool IsWorking()
         {
             if (string.IsNullOrEmpty(m_mycubegrid.Name)) // if gridname is null create one

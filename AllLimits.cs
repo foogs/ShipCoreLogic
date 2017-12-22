@@ -69,7 +69,7 @@ namespace ShipCoreMainBlock
 
     public class AllLimits
     {
-        public static AllLimits hackystatic;
+        
         public static Dictionary<MyStringHash, Addons> namelistaddons = new Dictionary<MyStringHash, Addons>(MyStringHash.Comparer) {
                 {MyStringHash.GetOrCompute("ShipCore_Add05"),Addons.friend_or_foe_transponder},
                 {MyStringHash.GetOrCompute("ShipCore_Add04"),Addons.Сooler},
@@ -87,15 +87,15 @@ namespace ShipCoreMainBlock
         public float MAX_BLOCKS_IN_STATION;
         public float MAX_BLOCKS_IN_LARGE_SHIP;
         public float MAX_BLOCKS_IN_SMALL_SHIP;
-        public List<BlockLimitItem> Big_List_of_Limits;
-        public Dictionary<Addons, int> installedAddons;
+        public List<BlockLimitItem> Big_List_of_Limits = null;
+        public Dictionary<Addons, int> installedAddons = null;
         
         /// <summary>
         /// Загрузка дефолтных лимитов
         /// </summary>
         public AllLimits()
         {
-            hackystatic = this;
+           // hackystatic = this;
                MAX_BLOCKS_IN_STATION = 5000.0f;//
             MAX_BLOCKS_IN_LARGE_SHIP = 2500.0f; //Base Limits
             MAX_BLOCKS_IN_SMALL_SHIP = 1000.0f; //  
@@ -120,10 +120,16 @@ namespace ShipCoreMainBlock
          new BlockLimitItem(BlockLimitItem.EnforcementMode.BlockTypeId,"ShipConnector","Any",3,false), // коннекторы
          new BlockLimitItem(BlockLimitItem.EnforcementMode.BlockTypeId,"GravityGenerator","Any",1,false),
          new BlockLimitItem(BlockLimitItem.EnforcementMode.BlockTypeId,"LargeGatlingTurret","Any",1,false),
-         new BlockLimitItem(BlockLimitItem.EnforcementMode.BlockTypeId,"LargeMissileTurret","Any",1,false),
+         new BlockLimitItem(BlockLimitItem.EnforcementMode.BlockTypeId,"LargeMissileTurret","Any",1,false), 
          new BlockLimitItem(BlockLimitItem.EnforcementMode.BlockTypeId,"InteriorTurret","Any",1,false),
          new BlockLimitItem(BlockLimitItem.EnforcementMode.BlockTypeId,"Reactor","Any",4,false),
-         new BlockLimitItem(BlockLimitItem.EnforcementMode.BlockTypeId,"Assembler","Any",4,false),
+         new BlockLimitItem(BlockLimitItem.EnforcementMode.BlockSubtypeId,"Any","LargeAssembler",1,false),
+         new BlockLimitItem(BlockLimitItem.EnforcementMode.BlockTypeId,"CargoContainer","Any",6,false),
+         new BlockLimitItem(BlockLimitItem.EnforcementMode.BlockSubtypeId,"Any","LargeBlockBatteryBlock",10,false),
+         new BlockLimitItem(BlockLimitItem.EnforcementMode.BlockSubtypeId,"Any","SmallBlockBatteryBlock",10,false),
+         new BlockLimitItem(BlockLimitItem.EnforcementMode.BlockTypeId,"ConveyorSorter","Any",20,false),
+         new BlockLimitItem(BlockLimitItem.EnforcementMode.BlockTypeId,"Gyro","Any",6,false),
+         new BlockLimitItem(BlockLimitItem.EnforcementMode.BlockTypeId,"JumpDrive","Any",6,false),
          
           /*
           Ограничения по блокам на объект базовые:
@@ -158,11 +164,11 @@ namespace ShipCoreMainBlock
 
         }
 
-        public static void RecalcLimitsWithAddons()
+        public void RecalcLimitsWithAddons()
         {
             bool Stabilizer = false;
             bool Fuse = false;
-            bool PowerBuffer = false; 
+            bool PowerBuffer = false;
             bool Сooler = false;
             bool friend_or_foe_transponder = false;
 
@@ -173,39 +179,75 @@ namespace ShipCoreMainBlock
             int Сoolerc = 0;
             int friend_or_foe_transponderc = 0;
 
-            foreach (var Addon in hackystatic.installedAddons)
+            foreach (var Addon in installedAddons)
             {
-                if(Addon.Key == Addons.friend_or_foe_transponder)
+                if (Addon.Key == Addons.friend_or_foe_transponder)
                 {
-                    if (friend_or_foe_transponder)                       
+                    if (friend_or_foe_transponder)
                         continue;
                     friend_or_foe_transponder = true;
-                    hackystatic.MAX_BLOCKS_IN_LARGE_SHIP += 1000;
-                    hackystatic.MAX_BLOCKS_IN_STATION += 1000;
-                    hackystatic.MAX_BLOCKS_IN_SMALL_SHIP += 400;
+                    MAX_BLOCKS_IN_LARGE_SHIP += 1000;
+                    MAX_BLOCKS_IN_STATION += 1000;
+                    MAX_BLOCKS_IN_SMALL_SHIP += 400;
                 }
                 if (Addon.Key == Addons.Fuse)
                 {
-                    if (Fuse)
+                    if (Fusec > 2)
                         continue;
-                    Fuse = true;
-                    hackystatic.MAX_BLOCKS_IN_LARGE_SHIP += 1000;
-                    hackystatic.MAX_BLOCKS_IN_STATION += 1000;
-                    hackystatic.MAX_BLOCKS_IN_SMALL_SHIP += 400;
-                    // +3 бура любых, +3 рефайна,+1 Ассемблер,+ 3 любых реакторов,+50 к кв. конвеерам и к обычным,
-                    hackystatic.Big_List_of_Limits.First(x => x.BlockSubtypeId == "LargeRefinery").MaxPerGrid += 3;
-                    hackystatic.Big_List_of_Limits.First(x => x.BlockSubtypeId == "Blast Furnace").MaxPerGrid += 3;
-                    hackystatic.Big_List_of_Limits.First(x => x.BlockTypeId == "Reactor").MaxPerGrid += 3;
-                    hackystatic.Big_List_of_Limits.First(x => x.BlockTypeId == "Drill").MaxPerGrid += 3;
+                    Fusec++;
+                    MAX_BLOCKS_IN_LARGE_SHIP += 1000;
+                    MAX_BLOCKS_IN_STATION += 1000;
+                    MAX_BLOCKS_IN_SMALL_SHIP += 400;
+                    // +1000 блоков, +3 бура любых, +2 рефайна,Аккумулятороы  +5,+ 3 любых реакторов,+50 ко всем конвеерам,
+                    Big_List_of_Limits.First(x => x.BlockSubtypeId == "LargeRefinery").MaxPerGrid += 2;
+                    Big_List_of_Limits.First(x => x.BlockSubtypeId == "Blast Furnace").MaxPerGrid += 2;
+                    Big_List_of_Limits.First(x => x.BlockTypeId == "Reactor").MaxPerGrid += 3;
+                    Big_List_of_Limits.First(x => x.BlockTypeId == "Drill").MaxPerGrid += 3;
 
 
-                    hackystatic.Big_List_of_Limits.First(x => x.BlockTypeId == "conver").MaxPerGrid += 50;
-                    hackystatic.Big_List_of_Limits.First(x => x.BlockTypeId == "conveerbasic").MaxPerGrid += 50;
+                    Big_List_of_Limits.First(x => x.BlockTypeId == "Conveyor").MaxPerGrid += 50;
+                    Big_List_of_Limits.First(x => x.BlockTypeId == "ShipConnector").MaxPerGrid += 3;
+                    Big_List_of_Limits.First(x => x.BlockTypeId == "ConveyorConnector").MaxPerGrid += 50;
+
+                }
+                if (Addon.Key == Addons.Stabilizer)
+                {
+                    if (Stabilizerc > 2)
+                        continue;
+                    Stabilizerc++;
+
+                    MAX_BLOCKS_IN_LARGE_SHIP += 1000;
+                    MAX_BLOCKS_IN_STATION += 1000;
+                    MAX_BLOCKS_IN_SMALL_SHIP += 400;
+                    //Буст: +1000 блоков,+2 Ассемблера,+10 любых коробок,
+                    //Аккумулятороы  +5, + 3 любых реакторов.+50 ко всем конвеерам,
+
+                    Big_List_of_Limits.First(x => x.BlockSubtypeId == "LargeAssembler").MaxPerGrid += 2;
+                    Big_List_of_Limits.First(x => x.BlockTypeId == "Reactor").MaxPerGrid += 3;
+                    Big_List_of_Limits.First(x => x.BlockTypeId == "CargoContainer").MaxPerGrid += 6;
+                    Big_List_of_Limits.First(x => x.BlockSubtypeId == "SmallBlockBatteryBlock").MaxPerGrid += 5;
+                    Big_List_of_Limits.First(x => x.BlockSubtypeId == "LargeBlockBatteryBlock").MaxPerGrid += 5;
+                    Big_List_of_Limits.First(x => x.BlockTypeId == "Conveyor").MaxPerGrid += 50;
+                    Big_List_of_Limits.First(x => x.BlockTypeId == "ShipConnector").MaxPerGrid += 3;
+                    Big_List_of_Limits.First(x => x.BlockTypeId == "ConveyorConnector").MaxPerGrid += 50;
+                }
+                if (Addon.Key == Addons.Сooler)
+                {
+                    if (Сooler)
+                        continue;
+                    Сooler = true;
+                    // +1000 блоков, +15 гироскопов, +50 движков.+5 джампдрайв.
+                    MAX_BLOCKS_IN_LARGE_SHIP += 1000;
+                    MAX_BLOCKS_IN_STATION += 1000;
+                    MAX_BLOCKS_IN_SMALL_SHIP += 400;
+                    Big_List_of_Limits.First(x => x.BlockTypeId == "Thrust").MaxPerGrid += 50;
+                    Big_List_of_Limits.First(x => x.BlockTypeId == "ConveyorConnector").MaxPerGrid += 50;
+
+                    Big_List_of_Limits.First(x => x.BlockTypeId == "JumpDrive").MaxPerGrid += 5;
+                    
                 }
 
-
             }
-
         }
         public class BlockLimitItem
         {
@@ -332,14 +374,14 @@ namespace ShipCoreMainBlock
         }
 
 
-
+        /* 
         [MySessionComponentDescriptor(MyUpdateOrder.AfterSimulation)]
         public class WBcore : MySessionComponentBase
         {
 
             public override void Draw()
             {
-                base.Draw();
+               base.Draw();
 
                 if (ShipCoreMainBlock.ShipCore.mycore == null) return;
                 MyStringId material = MyStringId.GetOrCompute("SquareIgnoreDepth");
@@ -355,9 +397,9 @@ namespace ShipCoreMainBlock
                     MySimpleObjectDraw.DrawLine(ShipCoreMainBlock.ShipCore.mycore.CubeGrid.GridIntegerToWorld(a), ShipCoreMainBlock.ShipCore.mycore.GetPosition(), material, ref color1, thickness);
 
                 }
+                
+    }
 
-            }
-
-        }
-        }
+}*/
+    }
 }
